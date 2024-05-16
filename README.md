@@ -1,4 +1,4 @@
-# eShop Reference Application - "Northern Mountains"
+# pHealth Reference Application - "Gotta Patch 'em All"
 
 A reference .NET application implementing an e-commerce website using a services-based architecture.
 
