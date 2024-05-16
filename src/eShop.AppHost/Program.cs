@@ -51,11 +51,6 @@ var webHooksApi = builder.AddProject<Projects.Webhooks_API>("webhooks-api")
     .WithReference(webhooksDb)
     .WithEnvironment("Identity__Url", identityEndpoint);
 
-// Reverse proxies
-builder.AddProject<Projects.Mobile_Bff_Shopping>("mobile-bff")
-    .WithReference(catalogApi)
-    .WithReference(identityApi);
-
 // Apps
 var webhooksClient = builder.AddProject<Projects.WebhookClient>("webhooksclient")
     .WithReference(webHooksApi)
@@ -69,51 +64,11 @@ var webApp = builder.AddProject<Projects.WebApp>("webapp", launchProfileName)
     .WithReference(rabbitMq)
     .WithEnvironment("IdentityUrl", identityEndpoint);
 
-// set to true if you want to use OpenAI
-bool useOpenAI = false;
-if (useOpenAI)
-{
-    const string openAIName = "openai";
-    const string textEmbeddingName = "text-embedding-3-small";
-    const string chatModelName = "gpt-35-turbo-16k";
-
-    // to use an existing OpenAI resource, add the following to the AppHost user secrets:
-    // "ConnectionStrings": {
-    //   "openai": "Key=<API Key>" (to use https://api.openai.com/)
-    //     -or-
-    //   "openai": "Endpoint=https://<name>.openai.azure.com/" (to use Azure OpenAI)
-    // }
-    IResourceBuilder<IResourceWithConnectionString> openAI;
-    if (builder.Configuration.GetConnectionString(openAIName) is not null)
-    {
-        openAI = builder.AddConnectionString(openAIName);
-    }
-    else
-    {
-        // to use Azure provisioning, add the following to the AppHost user secrets:
-        // "Azure": {
-        //   "SubscriptionId": "<your subscription ID>"
-        //   "Location": "<location>"
-        // }
-        openAI = builder.AddAzureOpenAI(openAIName)
-            .AddDeployment(new AzureOpenAIDeployment(chatModelName, "gpt-35-turbo", "0613"))
-            .AddDeployment(new AzureOpenAIDeployment(textEmbeddingName, "text-embedding-3-small", "1"));
-    }
-
-    catalogApi
-        .WithReference(openAI)
-        .WithEnvironment("AI__OPENAI__EMBEDDINGNAME", textEmbeddingName);
-
-    webApp
-        .WithReference(openAI)
-        .WithEnvironment("AI__OPENAI__CHATMODEL", chatModelName); ;
-}
-
 // Wire up the callback urls (self referencing)
 webApp.WithEnvironment("CallBackUrl", webApp.GetEndpoint(launchProfileName));
 webhooksClient.WithEnvironment("CallBackUrl", webhooksClient.GetEndpoint(launchProfileName));
 
-// Identity has a reference to all of the apps for callback urls, this is a cyclic reference
+// Identity has a reference to all the apps for callback urls, this is a cyclic reference
 identityApi.WithEnvironment("BasketApiClient", basketApi.GetEndpoint("http"))
            .WithEnvironment("OrderingApiClient", orderingApi.GetEndpoint("http"))
            .WithEnvironment("WebhooksApiClient", webHooksApi.GetEndpoint("http"))
